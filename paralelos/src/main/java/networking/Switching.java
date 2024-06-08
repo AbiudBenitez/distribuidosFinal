@@ -333,7 +333,7 @@ public class Switching extends JFrame {
         double rankScore = (cpuFree + memoryFreePercentage + diskFreePercentage
                 + Runtime.getRuntime().availableProcessors() * 100) / 100;
 
-        return getHamachiIP() + "," + cpuFree + "," + memoryFreePercentage + "," + diskFreePercentage + "," + rankScore
+        return clientIP[1] + "," + cpuFree + "," + memoryFreePercentage + "," + diskFreePercentage + "," + rankScore
                 + ",false" + "-" + metricasEstaticas[0] + "," + metricasEstaticas[1] + "," + metricasEstaticas[2] + ","
                 + metricasEstaticas[3] + "," + metricasEstaticas[4] + "," + metricasEstaticas[5] + ",";
     }
