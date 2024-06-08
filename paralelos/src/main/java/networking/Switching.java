@@ -27,7 +27,7 @@ public class Switching extends JFrame {
     private boolean isServerMode = true; // Inicia en modo servidor
     private static ScheduledExecutorService executor;
     private static String[] serverIPs = { "25.57.124.131", "25.13.41.150", "25.53.178.157", "25.53.225.158",
-            "25.42.108.158" }; // Lista de direcciones IP del servidor
+            "25.42.108.158", "25.8.210.88" }; // Lista de direcciones IP del servidor
     private static int currentServerIndex = 0;
     private ScheduledExecutorService metricSenderExecutor;
     private static String[] metricasEstaticas = new String[6];
@@ -107,24 +107,24 @@ public class Switching extends JFrame {
                 "Procesador", "Velocidad", "Nucleos", "Almacenamiento",
                 "OSVersion"
         };
+        info.setNamePC();
+        info.setProcessorModel();
+        info.setProcessorSpeed();
+        info.setOsVersion();
 
         Object[] row1 = {
-                System.getProperty("user.name"), getSystemInfo("wmic cpu get name"),
-                getSystemInfo("wmic cpu get MaxClockSpeed"),
+                info.getNamePC(), info.getProcessorModel(),
+                info.getProcessorSpeed(),
                 Runtime.getRuntime().availableProcessors(),
                 new File("/").getTotalSpace() / (1024 * 1024 * 1024) + " GB",
-                getSystemInfo("wmic os get Version")
+                info.getOsVersion()
         };
 
-        info.setNamePC();
         metricasEstaticas[0] = info.getNamePC();
-        info.setProcessorModel();
         metricasEstaticas[1] = info.getProcessorModel();
-        info.setProcessorSpeed();
         metricasEstaticas[2] = info.getProcessorSpeed();
         metricasEstaticas[3] = Integer.toString(Runtime.getRuntime().availableProcessors());
         metricasEstaticas[4] = new File("/").getTotalSpace() / (1024 * 1024 * 1024) + " GB";
-        info.setOsVersion();
         metricasEstaticas[5] = info.getOsVersion();
         detailedModel = new DefaultTableModel(detailedColumnNames, 0);
 
