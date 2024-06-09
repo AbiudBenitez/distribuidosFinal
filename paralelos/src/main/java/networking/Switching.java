@@ -33,33 +33,33 @@ public class Switching extends JFrame {
     private static String[] metricasEstaticas = new String[6];
     private JTable detailedTable;
     private DefaultTableModel detailedModel;
+    private static String ip;
+
+    protected static boolean verificarConexion(String ip, int puerto) {
+        try {
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(ip, puerto), 1000);
+            System.out.println("Se conecto con el servidor " + ip);
+            socket.close();
+            return true;
+        } catch (Exception e) {
+            System.out.println("No se pudo establecer conexion con: " + ip);
+            return false;
+        }
+    }
 
     public static void main(String[] args) throws UnknownHostException {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        System.out.println(clientIP[1]);
-        Runnable connectionChecker = new Runnable() {
-            public void run() {
-                if (isServerAvailable(clientIP[1], 9999, 3000)) {
-                    System.out.println("Servidor está en línea.");
-                } else {
-                    System.out.println("Servidor está fuera de línea.");
-                    reconnectToNextServer();
-                }
+        for (int i = 0; i < serverIPs.length; i++) {
+            if (verificarConexion(serverIPs[i], 9999)) {
+                ip = serverIPs[i];
+                i = serverIPs.length;
+            } else {
+                ip = clientIP[1];
             }
-        };
-
-        if (args.length > 0) {
-            clientIP[1] = args[0];
-        } else {
-            clientIP[1] = "127.0.0.1"; // IP predeterminada si no se proporciona ninguna
         }
 
-        SwingUtilities.invokeLater(() -> {
-            Switching node = new Switching();
-            node.setVisible(true);
-        });
-
-        scheduler.scheduleAtFixedRate(connectionChecker, 0, 10, TimeUnit.SECONDS);
+        Switching node = new Switching();
+        node.setVisible(true);
 
     }
 
@@ -68,15 +68,20 @@ public class Switching extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 600);
         setupUI();
-        if (isServerMode) {
+        System.out.println(ip);
+        System.out.println(clientIP[1]);
+        if (ip.equals(clientIP[1])) {
             try {
+                System.out.println("Se inicia server");
                 startServer();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         } else {
             try {
-                startClient(clientIP[1], 9999);
+                System.out.println("Se inicia cliente");
+                startClient(ip, 9999);
+                switchMode();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -188,8 +193,7 @@ public class Switching extends JFrame {
 
     private void startServer() throws IOException {
         serverSocket = new ServerSocket(9999);
-        executor = Executors.newScheduledThreadPool(10);
-        executor.scheduleAtFixedRate(() -> {
+        new Thread(() -> {
             try {
                 Socket clientSocket = serverSocket.accept();
                 clientSockets.add(clientSocket);
@@ -199,7 +203,7 @@ public class Switching extends JFrame {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }).start();
     }
 
     private void stopServer() throws IOException {
@@ -226,11 +230,11 @@ public class Switching extends JFrame {
                         processServerMessage(message);
                     }
                 } catch (IOException e) {
-                    reconnectToNextServer();
+                    System.out.println(e);
                 }
             }).start();
         } catch (IOException e) {
-            reconnectToNextServer();
+            System.out.println(e);
         }
     }
 
@@ -239,17 +243,6 @@ public class Switching extends JFrame {
             socket.close();
             out.close();
             in.close();
-        }
-    }
-
-    private static void reconnectToNextServer() {
-        currentServerIndex = (currentServerIndex + 1) % serverIPs.length;
-        String nextServerIP = serverIPs[currentServerIndex];
-        try {
-            startClient(nextServerIP, 9999);
-        } catch (IOException e) {
-            e.printStackTrace();
-            reconnectToNextServer(); // Reintenta con la siguiente IP
         }
     }
 
@@ -294,29 +287,6 @@ public class Switching extends JFrame {
         if (metricSenderExecutor != null) {
             metricSenderExecutor.shutdown();
         }
-    }
-
-    public static String getHamachiIP() {
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface networkInterface = interfaces.nextElement();
-                if (networkInterface.isUp() && !networkInterface.isLoopback()) {
-                    if (networkInterface.getDisplayName().contains("Hamachi")) {
-                        Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
-                        while (addresses.hasMoreElements()) {
-                            InetAddress address = addresses.nextElement();
-                            if (address.getAddress().length == 4) { // Check if it's IPv4
-                                return address.getHostAddress();
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     private static String updateSystemMetrics() {
