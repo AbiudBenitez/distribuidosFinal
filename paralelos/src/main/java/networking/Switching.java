@@ -17,8 +17,10 @@ public class Switching extends JFrame {
     InfoUser info = new InfoUser();
     private JButton switchButton;
     private static Socket socket;
-    private static PrintWriter out;
-    private static BufferedReader in;
+    private static ObjectOutputStream out;
+    private static ObjectInputStream in;
+    private static ObjectInputStream inServer;
+    private static ObjectOutputStream outServer;
     private static ServerSocket serverSocket;
     private static List<PrintWriter> clients = new ArrayList<>();
     private static List<Socket> clientSockets = new ArrayList<>();
@@ -35,6 +37,7 @@ public class Switching extends JFrame {
     private JTable detailedTable;
     private DefaultTableModel detailedModel;
     private static String ip;
+    private static boolean stateServer = true;
 
     protected static boolean verificarConexion(String ip, int puerto) {
         try {
@@ -82,7 +85,6 @@ public class Switching extends JFrame {
             try {
                 System.out.println("Se inicia cliente");
                 startClient(ip, 9999);
-                switchMode();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -95,11 +97,11 @@ public class Switching extends JFrame {
 
         switchButton = new JButton("Switch to Client");
         switchButton.addActionListener(e -> {
-            try {
-                switchMode();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+            // try {
+            // switchMode();
+            // } catch (IOException ex) {
+            // ex.printStackTrace();
+            // }
         });
         panel.add(switchButton);
 
@@ -147,6 +149,27 @@ public class Switching extends JFrame {
         panel.add(new JScrollPane(detailedTable));
     }
 
+    @SuppressWarnings("null")
+    protected static String[] getInfoUser() {
+        String[] data = null;
+        InfoUser info = new InfoUser();
+        info.setNamePC();
+        data[0] = info.getNamePC();
+        info.getProcessorModel();
+        data[1] = info.getProcessorModel();
+        info.getProcessorCores();
+        data[2] = Integer.toString(info.getProcessorCores());
+        info.setProcessorSpeed();
+        data[3] = info.getProcessorSpeed();
+        info.setDiskSpace();
+        data[4] = Long.toString(info.getDiskSpace());
+        info.setRam();
+        data[5] = Long.toString(info.getRam());
+        info.setOsVersion();
+        data[6] = info.getOsVersion();
+        return data;
+    }
+
     private String getSystemInfo(String command) {
         try {
             Process process = Runtime.getRuntime().exec(command);
@@ -164,45 +187,51 @@ public class Switching extends JFrame {
         return "Unknown";
     }
 
-    private void switchMode() throws IOException {
-        if (isServerMode) {
-            // Modo servidor a cliente
-            // notifyClientsToSwitch(clientIP);
-            stopServer();
-            resetTable();
-            startClient(clientIP[1], 9999);
-            switchButton.setText("Switch to Server");
-            isServerMode = false;
-            startSendingMetrics();
-        } else {
-            // Modo cliente a servidor
-            notifyServerSwitching();
-            stopClient();
-            startServer();
-            resetTable();
-            switchButton.setText("Switch to Client");
-            isServerMode = true;
-            stopSendingMetrics();
-        }
-    }
+    // private void switchMode() throws IOException {
+    // if (isServerMode) {
+    // // Modo servidor a cliente
+    // // notifyClientsToSwitch(clientIP);
+    // stopServer();
+    // resetTable();
+    // startClient(clientIP[1], 9999);
+    // switchButton.setText("Switch to Server");
+    // isServerMode = false;
+    // startSendingMetrics();
+    // } else {
+    // // Modo cliente a servidor
+    // notifyServerSwitching();
+    // stopClient();
+    // startServer();
+    // resetTable();
+    // switchButton.setText("Switch to Client");
+    // isServerMode = true;
+    // stopSendingMetrics();
+    // }
+    // }
 
-    private void notifyServerSwitching() throws IOException {
-        if (out != null) {
-            out.println("SWITCHING_TO_SERVER " + socket.getLocalAddress().getHostAddress());
-        }
-    }
+    // private void notifyServerSwitching() throws IOException {
+    // if (out != null) {
+    // out.println("SWITCHING_TO_SERVER " +
+    // socket.getLocalAddress().getHostAddress());
+    // }
+    // }
 
     private void startServer() throws IOException {
         serverSocket = new ServerSocket(9999);
         new Thread(() -> {
-            try {
-                Socket clientSocket = serverSocket.accept();
-                clientSockets.add(clientSocket);
-                PrintWriter clientOut = new PrintWriter(clientSocket.getOutputStream(), true);
-                clients.add(clientOut);
-                new Thread(new ClientHandler(clientSocket)).start();
-            } catch (IOException e) {
-                e.printStackTrace();
+            while (stateServer) {
+                try {
+                    System.out.println("escuchando");
+                    Socket clientSocket = serverSocket.accept();
+                    inServer = new ObjectInputStream(clientSocket.getInputStream());
+                    outServer = new ObjectOutputStream(clientSocket.getOutputStream());
+                    List<String> datos = Arrays.asList((String[]) inServer.readObject());
+                    datos.forEach(dato -> {
+                        System.out.println("Dato 1: " + dato);
+                    });
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
             }
         }).start();
     }
@@ -222,16 +251,20 @@ public class Switching extends JFrame {
     private static void startClient(String serverIP, int port) throws IOException {
         try {
             socket = new Socket("25.42.108.158", 9999);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            // socket = new Socket(serverIP, port);
             new Thread(() -> {
-                try {
-                    String message;
-                    while ((message = in.readLine()) != null) {
-                        processServerMessage(message);
+                String PC[];
+                while (stateServer) {
+                    try {
+                        out = new ObjectOutputStream(socket.getOutputStream());
+                        in = new ObjectInputStream(socket.getInputStream());
+                        PC = getInfoUser();
+                        out.writeObject(PC);
+                        String res = (String) in.readObject();
+                        System.out.println(res);
+                    } catch (Exception e) {
+                        System.out.println(e);
                     }
-                } catch (IOException e) {
-                    System.out.println(e);
                 }
             }).start();
         } catch (IOException e) {
@@ -275,14 +308,14 @@ public class Switching extends JFrame {
         }
     }
 
-    private void startSendingMetrics() {
-        metricSenderExecutor = Executors.newSingleThreadScheduledExecutor();
-        metricSenderExecutor.scheduleAtFixedRate(() -> {
-            if (out != null) {
-                out.println(updateSystemMetrics());
-            }
-        }, 0, 1, TimeUnit.SECONDS);
-    }
+    // private void startSendingMetrics() {
+    // metricSenderExecutor = Executors.newSingleThreadScheduledExecutor();
+    // metricSenderExecutor.scheduleAtFixedRate(() -> {
+    // if (out != null) {
+    // out.println(updateSystemMetrics());
+    // }
+    // }, 0, 1, TimeUnit.SECONDS);
+    // }
 
     private void stopSendingMetrics() {
         if (metricSenderExecutor != null) {
@@ -408,12 +441,12 @@ public class Switching extends JFrame {
                     resetTimer();
                     if (message.equals("SWITCH_TO_SERVER")) {
                         SwingUtilities.invokeLater(() -> {
-                            try {
-                                switchMode();
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
+                            // try {
+                            // switchMode();
+                            // } catch (IOException e) {
+                            // // TODO Auto-generated catch block
+                            // e.printStackTrace();
+                            // }
                         });
                     } else {
                         processClientData(message.split("-")[0].split(","), message.split("-")[1].split(","));
