@@ -223,13 +223,19 @@ public class Switching extends JFrame {
                 try {
                     System.out.println("escuchando");
                     Socket clientSocket = serverSocket.accept();
-                    inServer = new ObjectInputStream(clientSocket.getInputStream());
-                    outServer = new ObjectOutputStream(clientSocket.getOutputStream());
+                    ObjectOutputStream outServer = new ObjectOutputStream(clientSocket.getOutputStream());
+                    ObjectInputStream inServer = new ObjectInputStream(clientSocket.getInputStream());
+
                     List<String> datos = Arrays.asList((String[]) inServer.readObject());
-                    outServer.writeObject("Conectado");
                     datos.forEach(dato -> {
                         System.out.println("Dato 1: " + dato);
                     });
+                    outServer.writeObject("Conectado");
+
+                    // Cerrar streams y socket
+                    inServer.close();
+                    outServer.close();
+                    clientSocket.close();
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
@@ -251,25 +257,37 @@ public class Switching extends JFrame {
 
     private static void startClient(String serverIP, int port) throws IOException {
         try {
-            socket = new Socket("25.42.108.158", 9999);
-            // socket = new Socket(serverIP, port);
+            socket = new Socket(serverIP, port);
             new Thread(() -> {
-                String PC[];
-                while (stateServer) {
-                    try {
-                        out = new ObjectOutputStream(socket.getOutputStream());
-                        in = new ObjectInputStream(socket.getInputStream());
-                        PC = getInfoUser();
+                try {
+                    out = new ObjectOutputStream(socket.getOutputStream());
+                    in = new ObjectInputStream(socket.getInputStream());
+
+                    while (true) {
+                        String[] PC = getInfoUser();
                         out.writeObject(PC);
-                        String res = (String) in.readObject();
-                        System.out.println(res);
-                    } catch (Exception e) {
-                        System.out.println(e);
+                        out.flush();
+
+                        String response = (String) in.readObject();
+                        System.out.println("Response from server: " + response);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (out != null)
+                            out.close();
+                        if (in != null)
+                            in.close();
+                        if (socket != null)
+                            socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
             }).start();
         } catch (IOException e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
     }
 
