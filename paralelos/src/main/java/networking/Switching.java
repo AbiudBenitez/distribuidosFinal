@@ -259,12 +259,13 @@ public class Switching extends JFrame {
         try {
             socket = new Socket(serverIP, port);
             new Thread(() -> {
+                System.out.println("Se inicio el cliente exitosamente");
                 try {
                     out = new ObjectOutputStream(socket.getOutputStream());
                     in = new ObjectInputStream(socket.getInputStream());
 
-                    while (true) {
-                        String[] PC = getInfoUser();
+                    while (stateServer) {
+                        String[] PC = { "SI", "NO" };
                         out.writeObject(PC);
                         out.flush();
 
