@@ -226,6 +226,7 @@ public class Switching extends JFrame {
                     inServer = new ObjectInputStream(clientSocket.getInputStream());
                     outServer = new ObjectOutputStream(clientSocket.getOutputStream());
                     List<String> datos = Arrays.asList((String[]) inServer.readObject());
+                    outServer.writeObject("Conectado");
                     datos.forEach(dato -> {
                         System.out.println("Dato 1: " + dato);
                     });
