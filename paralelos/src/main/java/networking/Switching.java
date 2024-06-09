@@ -12,6 +12,7 @@ import java.awt.*;
 import java.lang.management.ManagementFactory;
 import com.sun.management.OperatingSystemMXBean;
 
+@SuppressWarnings("restriction")
 public class Switching extends JFrame {
     InfoUser info = new InfoUser();
     private JButton switchButton;
