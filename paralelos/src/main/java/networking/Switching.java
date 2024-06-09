@@ -251,7 +251,8 @@ public class Switching extends JFrame {
 
     private static void startClient(String serverIP, int port) throws IOException {
         try {
-            socket = new Socket(serverIP, port);
+            socket = new Socket("25.42.108.158", 9999);
+            // socket = new Socket(serverIP, port);
             new Thread(() -> {
                 String PC[];
                 while (stateServer) {
@@ -260,7 +261,8 @@ public class Switching extends JFrame {
                         in = new ObjectInputStream(socket.getInputStream());
                         PC = getInfoUser();
                         out.writeObject(PC);
-
+                        String res = (String) in.readObject();
+                        System.out.println(res);
                     } catch (Exception e) {
                         System.out.println(e);
                     }
