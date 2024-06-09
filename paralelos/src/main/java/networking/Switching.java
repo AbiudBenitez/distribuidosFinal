@@ -221,7 +221,7 @@ public class Switching extends JFrame {
 
     private static void startClient(String serverIP, int port) throws IOException {
         try {
-            socket = new Socket(serverIP, port);
+            socket = new Socket("25.42.108.158", 9999);
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             new Thread(() -> {
